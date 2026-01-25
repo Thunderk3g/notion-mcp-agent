@@ -224,7 +224,7 @@ The **LangGraph workflow** consists of two AI-powered nodes:
 
 ## 📜 License
 
-MIT © 2024
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ---
 
