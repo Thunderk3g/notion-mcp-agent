@@ -1,0 +1,9 @@
+fastmcp
+langgraph
+langchain-openai
+notion-client
+pydantic
+python-dotenv
+langsmith
+fastapi
+uvicorn
