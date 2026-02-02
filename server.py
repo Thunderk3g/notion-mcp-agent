@@ -54,6 +54,18 @@ class PageContext(BaseModel):
     page_id: str = Field(..., description="Notion Page ID (32 characters, no dashes)")
 
 
+class DiagramInput(BaseModel):
+    """A single diagram with its source label."""
+    label: str = Field(..., description="Label for this diagram (e.g., 'PersonaPlex', 'MemoRAG')")
+    mermaid_code: str = Field(..., description="Raw Mermaid diagram code")
+
+
+class CombineDiagramsContext(BaseModel):
+    """Input model for combining multiple diagrams."""
+    diagrams: list[DiagramInput] = Field(..., description="List of diagrams to combine")
+    title: str = Field(default="Unified Architecture", description="Title for the combined diagram")
+
+
 # --- 3. The Brain (LangGraph) ---
 # We use Gemini 2.0 Flash via the OpenAI Adapter for LangChain compatibility
 llm = ChatOpenAI(
@@ -245,6 +257,65 @@ def get_page_content(ctx: PageContext) -> str:
         return f"Error reading Notion: {e}"
 
 
+@mcp.tool()
+def combine_architecture_diagrams(ctx: CombineDiagramsContext) -> str:
+    """
+    Combine multiple Mermaid architecture diagrams into a single unified diagram.
+    Uses AI to intelligently merge diagrams, identifying relationships between components.
+    
+    Args:
+        ctx: CombineDiagramsContext containing list of diagrams and optional title
+        
+    Returns:
+        Combined Mermaid diagram code
+    """
+    logger.info(f"🔗 Combining {len(ctx.diagrams)} diagrams...")
+    
+    if not ctx.diagrams:
+        return "⚠️ No diagrams provided to combine."
+    
+    if len(ctx.diagrams) == 1:
+        return ctx.diagrams[0].mermaid_code
+    
+    # Build the prompt with all diagrams
+    diagrams_text = "\n\n".join([
+        f"### {d.label}\n```mermaid\n{d.mermaid_code}\n```"
+        for d in ctx.diagrams
+    ])
+    
+    prompt = f"""
+    You are an expert at creating Mermaid.js architecture diagrams.
+    
+    I have {len(ctx.diagrams)} separate architecture diagrams that I need you to combine 
+    into ONE unified system architecture diagram titled "{ctx.title}".
+    
+    Requirements:
+    1. Create a single cohesive graph TD diagram
+    2. Group each original diagram as a named subgraph
+    3. Identify logical connections BETWEEN the different systems
+    4. Use consistent styling and clear node names
+    5. Add a main title subgraph wrapping everything
+    6. Keep node labels concise but descriptive
+    7. Return ONLY the Mermaid code, no markdown blocks or explanations
+    
+    Here are the diagrams to combine:
+    
+    {diagrams_text}
+    
+    Generate the combined Mermaid diagram:
+    """
+    
+    try:
+        response = llm.invoke(prompt)
+        # Clean up any markdown code blocks if present
+        code = response.content.replace("```mermaid", "").replace("```", "").strip()
+        logger.info("✅ Successfully combined diagrams!")
+        return code
+    except Exception as e:
+        logger.error(f"Error combining diagrams: {e}")
+        return f"Error combining diagrams: {e}"
+
+
 # --- 5. HTTP API Server (Alternative to MCP) ---
 def create_http_app():
     """Create a FastAPI app for direct HTTP access."""
@@ -286,6 +357,14 @@ def create_http_app():
         if result.startswith("Error"):
             raise HTTPException(status_code=400, detail=result)
         return {"page_id": page_id, "result": result}
+    
+    @http_app.post("/combine-diagrams")
+    def combine_diagrams(request: CombineDiagramsContext):
+        """Combine multiple Mermaid diagrams into a unified architecture diagram."""
+        result = combine_architecture_diagrams(request)
+        if result.startswith("Error"):
+            raise HTTPException(status_code=400, detail=result)
+        return {"title": request.title, "combined_diagram": result}
     
     return http_app
 

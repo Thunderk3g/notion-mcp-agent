@@ -81,7 +81,7 @@ cd notion-research-buddy
 # Create virtual environment
 python -m venv .venv
 
-# Activate it
+#  Activate it
 .venv\Scripts\activate        # Windows
 # source .venv/bin/activate   # macOS/Linux
 
@@ -161,10 +161,11 @@ Add to your Claude Desktop MCP configuration with similar settings.
 
 ## 🛠️ Available Tools
 
-| Tool                    | Description                                                                    |
-| ----------------------- | ------------------------------------------------------------------------------ |
-| `process_research_page` | 🔄 Full pipeline: reads page → refines notes → generates diagram → writes back |
-| `get_page_content`      | 📖 Read-only: extracts and returns raw text from a Notion page                 |
+| Tool                            | Description                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| `process_research_page`         | 🔄 Full pipeline: reads page → refines notes → generates diagram → writes back |
+| `get_page_content`              | 📖 Read-only: extracts and returns raw text from a Notion page                 |
+| `combine_architecture_diagrams` | 🔗 Merges multiple Mermaid diagrams into a unified system architecture         |
 
 ---
 
@@ -189,6 +190,17 @@ curl http://localhost:8000/content/YOUR_PAGE_ID
 
 # Process page (refine + diagram)
 curl -X POST http://localhost:8000/process/YOUR_PAGE_ID
+
+# Combine multiple diagrams into one
+curl -X POST http://localhost:8000/combine-diagrams \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Unified Architecture",
+    "diagrams": [
+      {"label": "System A", "mermaid_code": "graph TD\n  A-->B"},
+      {"label": "System B", "mermaid_code": "graph TD\n  C-->D"}
+    ]
+  }'
 ```
 
 ---
